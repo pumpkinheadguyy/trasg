@@ -16,9 +16,8 @@ def start_message(message):
 # End conv
 @bot.message_handler(func=lambda message: message.text == "End conversation")
 def end_conv(message):
+    print(f"{message.chat.id} quit of the queue")
     types.ReplyKeyboardRemove()
-    # global connected
-    # connected = False
     id = message.chat.id
     bot.send_message(chat_id=id, text="You were disconnected")
     bot.send_message(chat_id=connected_users[id], text="You were disconnected")
@@ -27,22 +26,28 @@ def end_conv(message):
     print(f"Queue: {user_queue}, connected: {connected_users}")
 
 
-# Connecting users(Starting conv/ waiting for people)
+# Adding in queue
 @bot.message_handler(func=lambda message: message.text == "Start conversation")
 def handle_start(message):
     types.ReplyKeyboardRemove()
-    # global connected
     id = message.chat.id
     user_queue.append(id)
     bot.send_message(chat_id=id, text="You were added in queue. Waiting...", reply_markup=end_queue_markup)
-    while len(user_queue) < 2 and user_queue[0] == id:
-        print(f"Now: users {user_queue}")
-        time.sleep(5)
-    # connected = True
-    second_user = user_queue.popleft()
-    connected_users[id] = second_user
-    print(f"{id} connected with {second_user}")
-    bot.send_message(chat_id=id, text="User found! Just text smth.", reply_markup=end_markup)
+    if len(user_queue) > 1:
+        connecting_users(id)
+    print(f"{id} was added in queue")
+
+
+# Connecting users
+def connecting_users(user_2):
+    user_1 = user_queue.popleft()
+    connected_users[user_1] = user_2
+    connected_users[user_2] = user_1
+    user_queue.popleft()
+    print(f"Queue: {user_queue}, connected: {connected_users}")
+    print(f"{user_2} connected with {user_1}")
+    bot.send_message(chat_id=user_1, text="User found! Just text smth.", reply_markup=end_markup)
+    bot.send_message(chat_id=user_2, text="User found! Just text smth.", reply_markup=end_markup)
 
 
 # Ending queue
@@ -51,8 +56,8 @@ def end_queue(message):
     types.ReplyKeyboardRemove()
     id = message.chat.id
     bot.send_message(chat_id=id, text="You were disconnected")
-    connected_users[id] = None
     user_queue.popleft()
+    print(f"User queue:{user_queue}")
 
 
 # Sending messages
@@ -62,10 +67,8 @@ def send_mes(message):
 
 
 if __name__ == "__main__":
-    # connected = False
     user_queue = _collections.deque()
     connected_users = {}
-    # creating markups
     start_markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     itembtn = types.KeyboardButton("Start conversation")
     start_markup.add(itembtn)
